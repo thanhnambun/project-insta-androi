@@ -18,6 +18,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -31,21 +38,66 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", 
-                                "/swagger-resources/**", "/webjars/**", "/configuration/**").permitAll()
-                        .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
-                        .requestMatchers( "/api/v1/auth/profile", "/api/v1/auth/change-password", "api/v1/auth/refresh", "api/v1/auth/logout").hasAnyRole("ADMIN", "USER")
-
-                        .anyRequest().authenticated()
-                )
-
+        http
+                // ⬇️ Bật CORS dùng cấu hình bên dưới
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                .authorizeHttpRequests(auth -> auth
+                        // Cho phép preflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Swagger public
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**",
+                                "/webjars/**",
+                                "/configuration/**"
+                        ).permitAll()
+
+                        // Auth public
+                        .requestMatchers(
+                                "/api/v1/auths/register",
+                                "/api/v1/auths/login",
+                                "/api/v1/auths/refresh"
+                        ).permitAll()
+
+                        // Các API yêu cầu đăng nhập
+                        .requestMatchers(
+                                "/api/v1/accounts/**",
+                                "/api/v1/auths/logout"
+                        ).hasAnyRole("ADMIN", "USER")
+
+                        .anyRequest().authenticated()
+                );
+
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+
+        config.setAllowedOrigins(Arrays.asList(
+                "http://localhost:8081",          // Expo web preview
+                "http://192.168.1.215:8081",      // Expo LAN (thiết bị thật)
+                "exp://192.168.1.215:8081"        // Expo Go scheme (một số lib check origin)
+        ));
+
+        config.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 
     @Bean

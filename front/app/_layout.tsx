@@ -1,66 +1,22 @@
-import { Feather, FontAwesome, FontAwesome6, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Slot } from "expo-router";
+import "react-native-reanimated";
 
-export default function _layout() {
+import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
+import "@/global.css";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+export const unstable_settings = {
+  anchor: "(tabs)",
+};
+
+const queryClient = new QueryClient();
+
+export default function RootLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: "black",
-        tabBarInactiveTintColor: "gray",
-      }}
-    >
-      {/* Danh sách các trang sử dụng tab */}
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "",
-          tabBarIcon: ({ color }) => {
-            return <FontAwesome name="home" size={24} color={color} />;
-          },
-        }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: "",
-
-          tabBarIcon: ({ color }) => {
-            return <Feather name="search" size={24} color={color} />
-          },
-        }}
-      />
-      <Tabs.Screen
-        name="post"
-        options={{
-          title: "",
-
-          tabBarIcon: ({ color }) => {
-            return <FontAwesome6 name="add" size={24} color={color} />
-          },
-        }}
-      />
-      <Tabs.Screen
-        name="like"
-        options={{
-          title: "",
-          tabBarIcon: ({ color }) => {
-            return (
-              <FontAwesome name="heart-o" size={24} color={color} /> 
-              // <FontAwesome name="heart" size={24} color="black" />
-            );
-          },
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "",
-          tabBarIcon: ({ color }) => {
-            return <MaterialCommunityIcons name="account" size={24} color={color} />;
-          },
-        }}
-      />
-    </Tabs>
-  )
+    <GluestackUIProvider mode="light">
+      <QueryClientProvider client={queryClient}>
+        <Slot />
+      </QueryClientProvider>
+    </GluestackUIProvider>
+  );
 }

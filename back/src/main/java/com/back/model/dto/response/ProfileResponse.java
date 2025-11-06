@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class ProfileResponse{
+    private Long id;
     private String fullName;
     private String username;
     private String website;
