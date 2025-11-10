@@ -17,4 +17,9 @@ public interface IFollowRepository extends JpaRepository<Follow, Long> {
     List<Follow> findByFollowingAndStatus(User following, EFollowStatus status);
 
     List<Follow> findByFollowerAndStatus(User follower, EFollowStatus status);
+
+    void deleteByFollowerAndFollowing(User blocker, User blocked);
+
+    long countByFollowingAndStatus(User following, EFollowStatus status);
+    long countByFollowerAndStatus(User follower, EFollowStatus status);
 }

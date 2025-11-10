@@ -11,13 +11,9 @@ export const login = async (
   loginRequest: LoginRequest
 ): Promise<SingleResponse<JWTResponse>> => {
   try {
-    console.log("loginRequest: ", loginRequest);
-
     const res = await axiosInstance.post("/auths/login", loginRequest);
     return res.data;
   } catch (error) {
-    console.log("error: ", error);
-
     throw handleAxiosError(error);
   }
 };

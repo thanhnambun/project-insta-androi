@@ -19,4 +19,9 @@ public class ProfileResponse{
     private String phoneNumber;
     private String gender;
     private String avatarUrl;
+    private String status;
+
+    private Long followersCount;
+    private Long followingCount;
+    private Long postCount;
 }

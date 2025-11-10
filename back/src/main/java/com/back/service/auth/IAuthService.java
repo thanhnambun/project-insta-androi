@@ -8,8 +8,6 @@ import com.back.model.dto.response.JWTResponse;
 import com.back.model.dto.response.ProfileResponse;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-
 public interface IAuthService{
     APIResponse<JWTResponse> login(LoginRequestDTO loginRequestDTO);
     APIResponse<JWTResponse> register(RegisterRequestDTO registerRequestDTO);

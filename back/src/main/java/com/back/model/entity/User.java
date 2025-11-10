@@ -37,8 +37,6 @@ public class User {
 
     private String website;
 
-    private boolean privateAccount;
-
     @Column(name = "avatar_url", length = 100)
     private String avatarUrl;
 

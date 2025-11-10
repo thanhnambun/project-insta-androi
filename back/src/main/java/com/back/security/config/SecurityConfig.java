@@ -22,7 +22,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -39,18 +38,15 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // ⬇️ Bật CORS dùng cấu hình bên dưới
+                // ✅ Bật CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
-                .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
+
                         // Cho phép preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Swagger public
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
@@ -60,33 +56,37 @@ public class SecurityConfig {
                                 "/configuration/**"
                         ).permitAll()
 
-                        // Auth public
                         .requestMatchers(
                                 "/api/v1/auths/register",
                                 "/api/v1/auths/login",
                                 "/api/v1/auths/refresh"
                         ).permitAll()
 
-                        // Các API yêu cầu đăng nhập
                         .requestMatchers(
                                 "/api/v1/accounts/**",
                                 "/api/v1/auths/logout"
                         ).hasAnyRole("ADMIN", "USER")
 
                         .anyRequest().authenticated()
-                );
+                )
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }
 
+    // ✅ CORS config mới
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(Arrays.asList(
-                "http://localhost:8081",          // Expo web preview
-                "http://192.168.1.215:8081",      // Expo LAN (thiết bị thật)
-                "exp://192.168.1.215:8081"        // Expo Go scheme (một số lib check origin)
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "http://192.168.*.*:*",     // LAN – chạy điện thoại thật
+                "exp://*"                  // Expo Go
         ));
 
         config.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","PATCH","OPTIONS"));

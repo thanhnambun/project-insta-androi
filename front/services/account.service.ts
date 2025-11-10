@@ -4,7 +4,7 @@ import {
   ProfileResponse,
 } from "@/interfaces/profile.interface";
 import { axiosInstance } from "@/utils/axios-instance";
-import { SingleResponse } from "@/utils/response-data";
+import { BaseResponse, SingleResponse } from "@/utils/response-data";
 import { handleAxiosError } from "./error.service";
 
 export const getProfile = async (): Promise<
@@ -37,7 +37,6 @@ export const updateProfile = async (
 ): Promise<SingleResponse<ProfileResponse>> => {
   try {
     const form = new FormData();
-    // Append fields as strings for @ModelAttribute binding
     if (profile.fullName !== undefined)
       form.append("fullName", profile.fullName);
     form.append("username", profile.username);
@@ -79,3 +78,4 @@ export const uploadAvatar = async (
     throw handleAxiosError(error);
   }
 };
+
