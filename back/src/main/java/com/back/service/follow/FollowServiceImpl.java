@@ -2,11 +2,13 @@ package com.back.service.follow;
 
 import com.back.model.dto.response.APIResponse;
 import com.back.model.dto.response.ProfileResponse;
+import com.back.model.entity.Conversation;
 import com.back.model.entity.Follow;
 import com.back.model.entity.User;
 import com.back.model.enums.EFollowStatus;
 import com.back.model.enums.EUserStatus;
 import com.back.model.mapper.MapToProfileResponse;
+import com.back.repository.IConversationRepository;
 import com.back.repository.IFollowRepository;
 import com.back.repository.IUserRepository;
 import com.back.security.principal.CustomUserDetails;
@@ -15,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -26,6 +29,7 @@ public class FollowServiceImpl implements IFollowService {
 
     private final IFollowRepository followRepository;
     private final IUserRepository userRepository;
+    private final IConversationRepository conversationRepository;
 
     @Override
     public APIResponse<Void> followUser(Long followingId) {
@@ -62,14 +66,14 @@ public class FollowServiceImpl implements IFollowService {
     }
 
     @Override
-    public APIResponse<Void> acceptFollow(Long followId) {
+    public APIResponse<Void> acceptFollow(Long followerId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        Follow follow = followRepository.findById(followId)
+        Follow follow = followRepository.findByFollowerIdAndFollowingId(followerId, userDetails.getId())
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy yêu cầu theo dõi"));
 
-        if (!follow.getFollowing().getEmail().equals(userDetails.getEmail())) {
+        if (!follow.getFollowing().getId().equals(userDetails.getId())) {
             throw new SecurityException("Bạn không có quyền chấp nhận yêu cầu này");
         }
 
@@ -80,6 +84,17 @@ public class FollowServiceImpl implements IFollowService {
         follow.setStatus(EFollowStatus.ACCEPTED);
         followRepository.save(follow);
 
+        Optional<Conversation> existingConversation = conversationRepository
+                .findConversationByParticipants(follow.getFollower().getId(), follow.getFollowing().getId());
+
+        if (existingConversation.isEmpty()) {
+            Conversation conversation = Conversation.builder()
+                    .participants(List.of(follow.getFollower(), follow.getFollowing()))
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            conversationRepository.save(conversation);
+        }
+
         return APIResponse.<Void>builder()
                 .message("Đã chấp nhận yêu cầu theo dõi")
                 .status(200)
@@ -87,14 +102,14 @@ public class FollowServiceImpl implements IFollowService {
     }
 
     @Override
-    public APIResponse<Void> declineFollow(Long followId) {
+    public APIResponse<Void> declineFollow(Long followerId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        Follow follow = followRepository.findById(followId)
+        Follow follow = followRepository.findByFollowerIdAndFollowingId(followerId, userDetails.getId())
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy yêu cầu theo dõi"));
 
-        if (!follow.getFollowing().getEmail().equals(userDetails.getEmail())) {
+        if (!follow.getFollowing().getId().equals(userDetails.getId())) {
             throw new SecurityException("Bạn không có quyền từ chối yêu cầu này");
         }
 
@@ -102,8 +117,7 @@ public class FollowServiceImpl implements IFollowService {
             throw new IllegalArgumentException("Yêu cầu theo dõi này đã được xử lý");
         }
 
-        follow.setStatus(EFollowStatus.REJECTED);
-        followRepository.save(follow);
+        followRepository.delete(follow);
 
         return APIResponse.<Void>builder()
                 .message("Đã từ chối yêu cầu theo dõi")
@@ -119,12 +133,8 @@ public class FollowServiceImpl implements IFollowService {
         User currentUser = userRepository.findByEmail(userDetails.getEmail())
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy người dùng"));
 
-        Follow follow = followRepository.findById(followId)
+        Follow follow = followRepository.findByFollowerIdAndFollowingId(currentUser.getId(), followId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy mối quan hệ theo dõi"));
-
-        if (!follow.getFollower().equals(currentUser)) {
-            throw new SecurityException("Bạn không có quyền huỷ theo dõi người dùng này");
-        }
 
         followRepository.delete(follow);
 
@@ -197,5 +207,20 @@ public class FollowServiceImpl implements IFollowService {
                 .build();
     }
 
+    @Override
+    public APIResponse<EFollowStatus> getFollowStatus(Long targetId) {
+        CustomUserDetails currentUser = (CustomUserDetails)
+                SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long currentUserId = currentUser.getId();
 
+        return followRepository.findByFollowerIdAndFollowingId(currentUserId, targetId)
+                .map(follow -> APIResponse.<EFollowStatus>builder()
+                        .data(follow.getStatus())
+                        .message("Follow status fetched successfully")
+                        .build())
+                .orElse(APIResponse.<EFollowStatus>builder()
+                        .data(null)
+                        .message("Không tìm thấy quan hệ")
+                        .build());
+    }
 }

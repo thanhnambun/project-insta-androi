@@ -1,26 +1,25 @@
 import UnfollowModal from "@/components/UnfollowModal";
 import { useBlockUserMutation } from "@/hooks/useBlock";
 import {
-  useFollowStatusQuery,
-  useRemoveFollowMutation,
-  useSendFollowRequestMutation,
+    useFollowStatusQuery,
+    useSendFollowRequestMutation
 } from "@/hooks/useFollow";
+import { useOtherPostsQuery } from "@/hooks/usePost";
 import { useOtherProfileQuery } from "@/hooks/useUser";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-  Animated,
-  Dimensions,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    FlatList,
+    Image,
+    Modal,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -36,6 +35,10 @@ export default function OtherProfileScreen() {
   const sendFollowMutation = useSendFollowRequestMutation();
   const { data: followStatus } = useFollowStatusQuery(profile?.id as number);
   const blockUserMutation = useBlockUserMutation();
+  const { data: postsData, isLoading: isLoadingPosts } = useOtherPostsQuery(
+    profile?.id || 0
+  );
+  const posts = postsData?.data || [];
 
   const [showUnfollowModal, setShowUnfollowModal] = React.useState(false);
   const [menuVisible, setMenuVisible] = React.useState(false);
@@ -125,156 +128,189 @@ export default function OtherProfileScreen() {
           <ActivityIndicator />
         </View>
       ) : (
-        <ScrollView style={{ flex: 1 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", padding: 20 }}>
-            <Image
-              source={{
-                uri: profile?.avatarUrl || "https://placehold.co/120x120",
-              }}
-              style={{ width: 80, height: 80, borderRadius: 40 }}
-            />
-            <View
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                justifyContent: "space-around",
-              }}
-            >
-              <View style={{ alignItems: "center" }}>
-                <Text style={{ fontWeight: "bold", fontSize: 18 }}>
-                  {profile?.postCount ?? 0}
-                </Text>
-                <Text>Posts</Text>
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => item.id.toString()}
+          numColumns={3}
+          ListHeaderComponent={
+            <>
+              <View style={{ flexDirection: "row", alignItems: "center", padding: 20 }}>
+                <Image
+                  source={{
+                    uri: profile?.avatarUrl || "https://placehold.co/120x120",
+                  }}
+                  style={{ width: 80, height: 80, borderRadius: 40 }}
+                />
+                <View
+                  style={{
+                    flex: 1,
+                    flexDirection: "row",
+                    justifyContent: "space-around",
+                  }}
+                >
+                  <View style={{ alignItems: "center" }}>
+                    <Text style={{ fontWeight: "bold", fontSize: 18 }}>
+                      {profile?.postCount ?? 0}
+                    </Text>
+                    <Text>Posts</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={{ alignItems: "center" }}
+                    onPress={handleFollowersPress}
+                  >
+                    <Text style={{ fontWeight: "bold", fontSize: 18 }}>
+                      {profile?.followersCount ?? 0}
+                    </Text>
+                    <Text>Followers</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ alignItems: "center" }}
+                    onPress={handleFollowingPress}
+                  >
+                    <Text style={{ fontWeight: "bold", fontSize: 18 }}>
+                      {profile?.followingCount ?? 0}
+                    </Text>
+                    <Text>Following</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <TouchableOpacity
-                style={{ alignItems: "center" }}
-                onPress={handleFollowersPress}
-              >
-                <Text style={{ fontWeight: "bold", fontSize: 18 }}>
-                  {profile?.followersCount ?? 0}
+
+              <View style={{ paddingHorizontal: 20 }}>
+                <Text style={{ fontWeight: "bold" }}>
+                  {profile?.fullName || profile?.username || username}
                 </Text>
-                <Text>Followers</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ alignItems: "center" }}
-                onPress={handleFollowingPress}
-              >
-                <Text style={{ fontWeight: "bold", fontSize: 18 }}>
-                  {profile?.followingCount ?? 0}
-                </Text>
-                <Text>Following</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+                {profile?.bio ? <Text>{profile.bio}</Text> : null}
+                {profile?.website ? <Text>{profile.website}</Text> : null}
 
-          <View style={{ paddingHorizontal: 20 }}>
-            <Text style={{ fontWeight: "bold" }}>
-              {profile?.fullName || profile?.username || username}
-            </Text>
-            {profile?.bio ? <Text>{profile.bio}</Text> : null}
-            {profile?.website ? <Text>{profile.website}</Text> : null}
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+                  {followStatus?.data === "ACCEPTED" ? (
+                    <>
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          borderWidth: 1,
+                          borderColor: "#ddd",
+                          paddingVertical: 6,
+                          borderRadius: 6,
+                          alignItems: "center",
+                          backgroundColor: "#000",
+                        }}
+                        onPress={() => setShowUnfollowModal(true)}
+                      >
+                        <Text style={{ color: "#fff" }}>Đang theo dõi</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          borderWidth: 1,
+                          borderColor: "#ddd",
+                          paddingVertical: 6,
+                          borderRadius: 6,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text>Message</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        disabled={followStatus?.data === "PENDING"}
+                        style={{
+                          flex: 1,
+                          borderWidth: 1,
+                          borderColor: "#ddd",
+                          paddingVertical: 6,
+                          borderRadius: 6,
+                          alignItems: "center",
+                          backgroundColor:
+                            followStatus?.data === "PENDING" ? "#999" : "#000",
+                          opacity: sendFollowMutation.isPending ? 0.6 : 1,
+                        }}
+                        onPress={handleFollow}
+                      >
+                        {sendFollowMutation.isPending ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={{ color: "#fff" }}>
+                            {followStatus?.data === "PENDING"
+                              ? "Pending"
+                              : "Follow"}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
 
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-              {followStatus?.data === "ACCEPTED" ? (
-                <>
-                  <TouchableOpacity
-                    style={{
-                      flex: 1,
-                      borderWidth: 1,
-                      borderColor: "#ddd",
-                      paddingVertical: 6,
-                      borderRadius: 6,
-                      alignItems: "center",
-                      backgroundColor: "#000",
-                    }}
-                    onPress={() => setShowUnfollowModal(true)}
-                  >
-                    <Text style={{ color: "#fff" }}>Đang theo dõi</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{
-                      flex: 1,
-                      borderWidth: 1,
-                      borderColor: "#ddd",
-                      paddingVertical: 6,
-                      borderRadius: 6,
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text>Message</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <TouchableOpacity
-                    disabled={followStatus?.data === "PENDING"}
-                    style={{
-                      flex: 1,
-                      borderWidth: 1,
-                      borderColor: "#ddd",
-                      paddingVertical: 6,
-                      borderRadius: 6,
-                      alignItems: "center",
-                      backgroundColor:
-                        followStatus?.data === "PENDING" ? "#999" : "#000",
-                      opacity: sendFollowMutation.isPending ? 0.6 : 1,
-                    }}
-                    onPress={handleFollow}
-                  >
-                    {sendFollowMutation.isPending ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={{ color: "#fff" }}>
-                        {followStatus?.data === "PENDING"
-                          ? "Pending"
-                          : "Follow"}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={{
-                      flex: 1,
-                      borderWidth: 1,
-                      borderColor: "#ddd",
-                      paddingVertical: 6,
-                      borderRadius: 6,
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text>Message</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-around",
-              borderTopWidth: 0.5,
-              borderColor: "#ddd",
-              marginTop: 20,
-              paddingTop: 10,
-            }}
-          >
-            <Ionicons name="grid-outline" size={28} />
-            <Ionicons name="person-outline" size={28} />
-          </View>
-
-          <FlatList
-            data={[]}
-            keyExtractor={(_, index) => String(index)}
-            numColumns={3}
-            renderItem={() => null}
-            ListEmptyComponent={() => (
-              <View style={{ padding: 40, alignItems: "center" }}>
-                <Text>No posts yet</Text>
+                      <TouchableOpacity
+                        onPress={() => router.push("/message")}
+                        style={{
+                          flex: 1,
+                          borderWidth: 1,
+                          borderColor: "#ddd",
+                          paddingVertical: 6,
+                          borderRadius: 6,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text>Message</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
               </View>
-            )}
-          />
-        </ScrollView>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-around",
+                  borderTopWidth: 0.5,
+                  borderColor: "#ddd",
+                  marginTop: 20,
+                  paddingTop: 10,
+                  marginBottom: 10,
+                }}
+              >
+                <Ionicons name="grid-outline" size={28} />
+                <Ionicons name="person-outline" size={28} />
+              </View>
+            </>
+          }
+          renderItem={({ item }) => {
+            const itemWidth = (width - 4) / 3; // 3 columns với margin 2px giữa các items
+            return (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={{ width: itemWidth, height: itemWidth, margin: 0.5 }}
+                onPress={() => router.push(`/(tabs)/post/${item.id}`)}
+              >
+                {item.mediaList?.[0]?.url ? (
+                  <Image
+                    source={{ uri: item.mediaList[0].url }}
+                    style={{ width: "100%", height: "100%", borderRadius: 2 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      backgroundColor: "#eee",
+                      borderRadius: 2,
+                    }}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          }}
+          columnWrapperStyle={posts.length > 0 ? {
+            justifyContent: "flex-start",
+          } : undefined}
+          ListEmptyComponent={() => (
+            <View style={{ padding: 40, alignItems: "center" }}>
+              <Text>Chưa có bài đăng nào</Text>
+            </View>
+          )}
+          contentContainerStyle={{ flexGrow: 1 }}
+        />
       )}
 
       {/* Modal Unfollow */}
